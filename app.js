@@ -97,7 +97,7 @@ function getHeightOnStaff(key, signature, pianoNoteNumber)
         numOctaves++;
         rem += 12;
     }
-    if (rem > 5)
+    if (rem >= 5)
     {
         return numOctaves * 7 + rem / 2 + .5;
     }
