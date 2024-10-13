@@ -106,7 +106,7 @@ function getHeightOnStaff(key, signature, pianoNoteNumber)
         let rem = offset % 12;
         if (rem < 0)
         {
-            numOctaves++;
+            numOctaves--;
             rem += 12;
         }
         return numOctaves * 7 + rem / 2 + (rem >= 5 ? .5 : 0)
@@ -119,10 +119,14 @@ function getHeightOnStaff(key, signature, pianoNoteNumber)
         let rem = offset % 12;
         if (rem < 0)
         {
-            numOctaves++;
+            numOctaves--;
             rem += 12;
         }
         return numOctaves * 7 + rem / 2 + (rem >= 1 ? .5 : 0) + (rem >= 8 ? .5 : 0)
+    }
+    else
+    {
+        assert(!"unknown key")
     }
 }
 
