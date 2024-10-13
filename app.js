@@ -211,7 +211,7 @@ function freqToPianoNote(freq)
 
 // we wait to hear a note for at 10 frames, within a range of 2 piano notes to
 // trigger the callback
-const SMOOTHING_NUM_FRAMES = 5
+const SMOOTHING_NUM_FRAMES = 3
 const SMOOTHING_ALLOWED_UNCERTAINTY = 1
 let previousPianoNote = -1; // means we have heard nothing
 let numFramesHeardPianoNote = 0;
