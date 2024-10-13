@@ -276,7 +276,7 @@ function onNotePlayed(pianoNote)
     }
     if (waitingForPianoNote != pianoNote)
     {
-        showError(`Wrong note, this is not a <${pianoNote}> ${pianoNoteNames[pianoNote%pianoNoteNames.length]}, try again`);
+        showError(`Wrong note, this is not a ${pianoNoteNames[pianoNote%pianoNoteNames.length]}, try again`);
     }
     else
     {
