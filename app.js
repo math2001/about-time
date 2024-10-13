@@ -4,24 +4,33 @@ const STAFF_LEFT = 15
 const GKEY_LEFT = 15
 const GKEY_TOP = STAFF_TOP - 21.5
 
+const FKEY_LEFT = 15
+const FKEY_TOP = STAFF_TOP
+
 const STAFF_HALF_INTERVAL_HEIGHT = 8.95
 
-const BLACK_DOWN_LEFT = 100
+const BLACK_DOWN_LEFT = 100 + 10
 const BLACK_DOWN_TOP_INTERVAL = STAFF_TOP + .5 // offset to put blackdown on the highest interval
 
-const BLACK_UP_LEFT = 100
-const BLACK_UP_TOP_INTERVAL = -2.5 // offset to put blackup on the highest interval
+const BLACK_UP_LEFT = 100 + 10
+const BLACK_UP_TOP_INTERVAL = STAFF_TOP - 53.7 // offset to put blackup on the highest interval
 
-const FLAT_LEFT = 75
+const FLAT_LEFT = 75 + 10
 const FLAT_TOP_INTERVAL = 43
 
-const LEDGER_LEFT = 95
+const SHARP_LEFT = 75 + 10
+const SHARP_TOP_INTERVAL = 43
+
+const LEDGER_LEFT = 95 + 10
 const LEDGER_TOP_LINE = STAFF_TOP
 
 // the middle C position in the G key
 const BLACK_DOWN_FIRST_LOW_LEDGER_HEIGHT = BLACK_DOWN_TOP_INTERVAL + STAFF_HALF_INTERVAL_HEIGHT * 9
+const BLACK_UP_FIRST_LOW_LEDGER_HEIGHT = BLACK_UP_TOP_INTERVAL + STAFF_HALF_INTERVAL_HEIGHT * 9
 const FLAT_FIRST_LOW_LEDGER_HEIGHT = FLAT_TOP_INTERVAL + STAFF_HALF_INTERVAL_HEIGHT * 9
-const PIANO_NUMBER_MIDDLE_C = 40
+const SHARP_FIRST_LOW_LEDGER_HEIGHT = SHARP_TOP_INTERVAL + STAFF_HALF_INTERVAL_HEIGHT * 9
+const PIANO_NUMBER_C4 = 40
+const PIANO_NUMBER_E2 = 20
 
 function setPos(elem, x, y)
 {
@@ -38,7 +47,8 @@ function hide(elem)
     elem.style.display = 'none'
 }
 
-const KEY_G = 'key G'
+const G_KEY = 'key G'
+const F_KEY = 'key F'
 const SIGNATURE_EMPTY = 'signature-empty'
 
 function assert(condition, message=undefined)
@@ -81,29 +91,56 @@ function showLedgers(num, x_offset=0)
     }
 }
 
-// 0 corresponds to the middle C
+// 0 corresponds to the line where lies the middle C in the key of G
 // .5 means there should be a sharp in front, or the height is one more with a flat
 function getHeightOnStaff(key, signature, pianoNoteNumber)
 {
-    assert(key === KEY_G);
+    assert(key === G_KEY || key === F_KEY);
     assert(signature === SIGNATURE_EMPTY);
 
-    const offset = pianoNoteNumber - PIANO_NUMBER_MIDDLE_C
+    if (key == G_KEY)
+    {
+        const offset = pianoNoteNumber - PIANO_NUMBER_C4;
 
-    let numOctaves = Math.trunc(offset / 12)
-    let rem = offset % 12;
-    if (rem < 0)
-    {
-        numOctaves++;
-        rem += 12;
+        let numOctaves = Math.trunc(offset / 12)
+        let rem = offset % 12;
+        if (rem < 0)
+        {
+            numOctaves++;
+            rem += 12;
+        }
+        return numOctaves * 7 + rem / 2 + (rem >= 5 ? .5 : 0)
     }
-    if (rem >= 5)
+    else if (key == F_KEY)
     {
-        return numOctaves * 7 + rem / 2 + .5;
+        const offset = pianoNoteNumber - PIANO_NUMBER_E2;
+
+        let numOctaves = Math.trunc(offset / 12)
+        let rem = offset % 12;
+        if (rem < 0)
+        {
+            numOctaves++;
+            rem += 12;
+        }
+        return numOctaves * 7 + rem / 2 + (rem >= 1 ? .5 : 0) + (rem >= 8 ? .5 : 0)
+    }
+}
+
+function showKey(key)
+{
+    if (key === G_KEY)
+    {
+        show(gkey);
+        hide(fkey);
+    }
+    else if (key === F_KEY)
+    {
+        show(fkey);
+        hide(gkey);
     }
     else
     {
-        return numOctaves * 7 + rem / 2
+        assert(!`unknown key ${key}`)
     }
 }
 
@@ -112,15 +149,19 @@ function getHeightOnStaff(key, signature, pianoNoteNumber)
 // F = 50
 function showNote(key, signature, pianoNoteNumber, preferFlats=false)
 {
-    assert(key === KEY_G);
-    assert(signature === SIGNATURE_EMPTY);
 
     hide(blackup)
     hide(blackdown)
     hide(flat)
     hide(sharp)
 
+    assert(key === G_KEY || key === F_KEY);
+    showKey(key)
+
+    assert(signature === SIGNATURE_EMPTY);
     let heightOnStaff = getHeightOnStaff(key, signature, pianoNoteNumber)
+
+    // if there's a .5, we have to show a flat or a sharp
     if (heightOnStaff != Math.trunc(heightOnStaff))
     {
         if (preferFlats)
@@ -133,13 +174,23 @@ function showNote(key, signature, pianoNoteNumber, preferFlats=false)
         {
             heightOnStaff = Math.floor(heightOnStaff);
             show(sharp)
-            setPos(sharp, FLAT_LEFT, FLAT_FIRST_LOW_LEDGER_HEIGHT - heightOnStaff * STAFF_HALF_INTERVAL_HEIGHT)
+            setPos(sharp, SHARP_LEFT, SHARP_FIRST_LOW_LEDGER_HEIGHT - heightOnStaff * STAFF_HALF_INTERVAL_HEIGHT)
         }
     }
 
-    show(blackdown)
-    setPos(blackdown, BLACK_DOWN_LEFT, BLACK_DOWN_FIRST_LOW_LEDGER_HEIGHT - heightOnStaff * STAFF_HALF_INTERVAL_HEIGHT)
+    // choose between putting the tail up or down
+    if (heightOnStaff > 5)
+    {
+        show(blackdown)
+        setPos(blackdown, BLACK_DOWN_LEFT, BLACK_DOWN_FIRST_LOW_LEDGER_HEIGHT - heightOnStaff * STAFF_HALF_INTERVAL_HEIGHT)
+    }
+    else
+    {
+        show(blackup)
+        setPos(blackup, BLACK_UP_LEFT, BLACK_UP_FIRST_LOW_LEDGER_HEIGHT - heightOnStaff * STAFF_HALF_INTERVAL_HEIGHT)
+    }
 
+    // show leders if needed
     if (heightOnStaff <= 0)
     {
         showLedgers(1 - Math.trunc(heightOnStaff / 2))
@@ -183,9 +234,13 @@ function randint(lo, hi)
     return Math.trunc(Math.random() * (hi - lo) + lo)
 }
 
-function pickRandomPianoNote()
+function pickQuestion()
 {
-    return randint(40, 60)
+    if (randint(0, 2))
+    {
+        return [G_KEY, randint(35, 60)];
+    }
+    return [F_KEY, randint(18, 45)]
 }
 
 let popUpTimeout = -1;
@@ -260,14 +315,16 @@ function getPianoNoteName(pianoNoteNumber)
     return pianoNoteNames[pianoNoteNumber%pianoNoteNames.length]
 }
 
-function nextNote()
-{
-    waitingForPianoNote = pickRandomPianoNote();
-    showNote(KEY_G, SIGNATURE_EMPTY, waitingForPianoNote, Math.random() > .5);
-    console.log("waiting for", waitingForPianoNote, getPianoNoteName(waitingForPianoNote));
-}
 
 let waitingForPianoNote = -1;
+
+function nextNote()
+{
+    let key;
+    [key, waitingForPianoNote] = pickQuestion();
+    showNote(key, SIGNATURE_EMPTY, waitingForPianoNote, Math.random() > .5);
+    console.log("waiting for", waitingForPianoNote, getPianoNoteName(waitingForPianoNote));
+}
 function onNotePlayed(pianoNote)
 {
     if (!(30 <= pianoNote && pianoNote <= 80))
@@ -288,6 +345,7 @@ function onNotePlayed(pianoNote)
 document.addEventListener("DOMContentLoaded", () => {
     initAudioContext();
     hide(fkey)
+    hide(gkey)
     hide(natural)
     hide(sharp)
     hide(flat)
@@ -297,6 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setPos(staff, STAFF_LEFT, STAFF_TOP);
     setPos(gkey, GKEY_LEFT, GKEY_TOP)
+    setPos(fkey, FKEY_LEFT, FKEY_TOP)
 
     listenForNote(onNotePlayed);
 
