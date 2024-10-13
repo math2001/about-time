@@ -47,8 +47,8 @@ function hide(elem)
     elem.style.display = 'none'
 }
 
-const G_KEY = 'key G'
-const F_KEY = 'key F'
+const G_KEY = 'G'
+const F_KEY = 'F'
 const SIGNATURE_EMPTY = 'signature-empty'
 
 function assert(condition, message=undefined)
@@ -238,9 +238,9 @@ function pickQuestion()
 {
     if (randint(0, 2))
     {
-        return [G_KEY, randint(35, 60)];
+        return {key: G_KEY, pianoNoteNumber: randint(35, 60), preferFlat: Math.random() > .5}
     }
-    return [F_KEY, randint(18, 45)]
+    return {key: F_KEY, pianoNoteNumber: randint(18, 45), preferFlat: Math.random() > .5}
 }
 
 let popUpTimeout = -1;
@@ -253,8 +253,6 @@ function showError(msg)
 
     popUpTimeout = window.setTimeout(() => error_popup.classList.add('hidden'), 2000)
 }
-
-
 
 let analyser, audioContext;
 
@@ -308,32 +306,74 @@ function listenForNote(cb)
 }
 
 
-const pianoNoteNames = ["G#", "A", "A#", "B", "C", "C#", "D", "D#", "E", "E#", "F#", "G"]
+const pianoNoteNamesSharp = ["G#", "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G"]
+const pianoNoteNamesFlat = ["Ab", "A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G"]
 
-function getPianoNoteName(pianoNoteNumber)
+function prettyPrintPianoNoteNumber(n, preferFlat)
 {
-    return pianoNoteNames[pianoNoteNumber%pianoNoteNames.length]
+    return (preferFlat ? pianoNoteNamesFlat : pianoNoteNamesSharp)
+        [n % pianoNoteNamesFlat.length] + Math.ceil((n - 3) / 12);
 }
 
+let key = F_KEY;
+let preferFlat = true;
+let waitingForPianoNoteNumber = -1;
+let mistakes = [] // a list of {triggerAt: timestamp, key: key, pianoNoteNumber: number, preferFlat: bool}
+let roundNumber = 0; // increases by 1 everytime we get the next note
 
-let waitingForPianoNote = -1;
+function prettyPrintMistakes()
+{
+    let s = `[${roundNumber}] `;
+    for (let m of mistakes)
+    {
+        s += `<[${m.triggerAt}] ${m.key} ${prettyPrintPianoNoteNumber(m.pianoNoteNumber, m.preferFlat)} ${m.pianoNoteNumber}> `
+    }
+    return s
+}
 
 function nextNote()
 {
-    let key;
-    [key, waitingForPianoNote] = pickQuestion();
-    showNote(key, SIGNATURE_EMPTY, waitingForPianoNote, Math.random() > .5);
-    console.log("waiting for", waitingForPianoNote, getPianoNoteName(waitingForPianoNote));
+    if (mistakes.length > 0 && mistakes[0].triggerAt <= roundNumber)
+    {
+        const m = mistakes.shift()
+        key = m.key;
+        waitingForPianoNoteNumber = m.pianoNoteNumber;
+    }
+    else
+    {
+        const q = pickQuestion();
+        key = q.key;
+        waitingForPianoNoteNumber = q.pianoNoteNumber;
+        preferFlat = q.preferFlats
+    }
+    console.log('showing', waitingForPianoNoteNumber)
+    showNote(key, SIGNATURE_EMPTY, waitingForPianoNoteNumber, preferFlat);
+
+    roundNumber++;
 }
-function onNotePlayed(pianoNote)
+
+function onNotePlayed(pianoNoteNumber)
 {
-    if (!(30 <= pianoNote && pianoNote <= 80))
+    if (!(15 <= pianoNoteNumber && pianoNoteNumber <= 80))
     {
         return; // ignore those pianoNoteNames, they are probably just noise
     }
-    if (waitingForPianoNote != pianoNote)
+
+    if (waitingForPianoNoteNumber != pianoNoteNumber)
     {
-        showError(`Wrong note, this is not a ${pianoNoteNames[pianoNote%pianoNoteNames.length]}, try again`);
+        showError(`Wrong note, this is a ${prettyPrintPianoNoteNumber(pianoNoteNumber, preferFlat)}, try again`);
+        if (mistakes.length == 0 || (
+            mistakes[mistakes.length-1].key != key
+            || mistakes[mistakes.length-1].pianoNoteNumber != waitingForPianoNoteNumber
+            || mistakes[mistakes.length-1].preferFlats != preferFlat))
+        {
+            mistakes.push({
+                key: key,
+                pianoNoteNumber: waitingForPianoNoteNumber,
+                preferFlat: preferFlat,
+                triggerAt: roundNumber + 5
+            })
+        }
     }
     else
     {
